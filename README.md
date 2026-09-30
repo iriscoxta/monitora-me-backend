@@ -89,6 +89,7 @@ Copie `.env.example` para `.env` e preencha:
 | Variável | Obrigatória | Descrição |
 | --- | --- | --- |
 | `PORT` | Não (padrão `3333`) | Porta em que a API escuta |
+| `HOST` | Não (padrão `0.0.0.0`) | Interface em que a API escuta. `0.0.0.0` aceita conexões de fora do container/máquina |
 | `FRONTEND_URL` | Não (padrão `http://localhost:3000`) | Origem liberada no CORS. Use a URL exata do front, nunca `*` |
 | `DATABASE_URL` | **Sim** | Conexão do Prisma com o banco (pooler do Supabase, porta `6543`, com `?pgbouncer=true`) |
 | `DIRECT_URL` | **Sim** | Conexão direta, usada pelas migrations (porta `5432`) |
@@ -190,11 +191,30 @@ Recurso implementado até agora: **fornecedores** (`suppliers`).
 
 | Método | Rota | Descrição | Sucesso | Erros |
 | --- | --- | --- | --- | --- |
-| `GET` | `/suppliers` | Lista todos os fornecedores | `200` | |
+| `GET` | `/suppliers` | Lista fornecedores, com filtros opcionais (veja abaixo) | `200` | |
+| `GET` | `/suppliers/stats` | Quantidade de fornecedores agrupada por porte | `200` | |
 | `GET` | `/suppliers/:id` | Busca um fornecedor pelo id | `200` | `404` |
+| `GET` | `/suppliers/:id/biddings` | Fornecedor com suas licitações; aceita `?minValue=` | `200` | `404` |
 | `POST` | `/suppliers` | Cria um fornecedor | `201` | `400` |
 | `PATCH` | `/suppliers/:id` | Atualização **parcial** (envie só os campos que mudam) | `200` | `404` |
-| `DELETE` | `/suppliers/:id` | Remove um fornecedor | `204` (sem corpo) | `404` |
+| `DELETE` | `/suppliers/:id` | Remove um fornecedor que não tenha licitações | `204` (sem corpo) | `404`, `409` |
+
+Filtros de `GET /suppliers` (todos opcionais e combináveis):
+
+| Parâmetro | Exemplo | Efeito |
+| --- | --- | --- |
+| `name` | `?name=alfa` | Nome que *contém* o texto, sem diferenciar maiúsculas de minúsculas |
+| `porte` | `?porte=ME,EPP` | Porte igual a qualquer um dos valores listados |
+
+```
+GET /suppliers?name=alfa&porte=ME,EPP
+GET /suppliers/stats
+GET /suppliers/<id>/biddings?minValue=10000
+```
+
+Cada consulta ilustra um recurso do Prisma visto em aula: `contains` e `in` (filtros), `groupBy` com `_count` (agregação), e `include` com `where: { value: { gte } }` (relação filtrada).
+
+No `POST`, os três campos (`name`, `cnpj` e `porte`) são obrigatórios. Campos que não existem no schema são descartados pelo Fastify.
 
 Exemplo de corpo para `POST /suppliers`:
 
@@ -205,6 +225,8 @@ Exemplo de corpo para `POST /suppliers`:
   "porte": "ME"
 }
 ```
+
+O `DELETE` responde `409 Conflict` quando o fornecedor ainda tem licitações vinculadas: apague ou reatribua as licitações antes.
 
 Formato dos erros:
 
@@ -374,7 +396,7 @@ Um commit por assunto: não misture correção de bug com documentação no mesm
 - [x] Hash de senhas com bcrypt (Aula 14)
 - [ ] Login e JWT (Aula 15)
 - [ ] Controle de acesso por perfil, RBAC (Aula 16)
-- [ ] Filtros, agregações e `include` nas consultas do repository
+- [x] Filtros, agregações e `include` nas consultas do repository
 - [ ] Rotas para `Orgao`, `Licitacao` e `User`
 
 ---
