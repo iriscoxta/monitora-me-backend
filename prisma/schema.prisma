@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // directUrl = env("DIRECT_URL")
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Supplier {
+  id         String  @id @default(uuid())
+  name       String 
+  cnpj       String  @unique
+  porte      String
+  createdAt  DateTime  @default(now())
+  biddings   Bidding[]
+}
+
+model Bidding {
+  id          String  @id @default(uuid())
+  number      String  @unique
+  value       Float
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Orgao{
+  id String @id @default(uuid())
+  cnpj String @unique
+  razaoSocial String @map("razao_social")
+  licitacoes Licitacao[]
+
+  @@map("orgaos")
+}
+
+model Licitacao{
+  id String @id @default(uuid())
+  numeroControlePncp String @unique
+  orgaoId String 
+  orgao Orgao @relation(fields: [orgaoId], references: [id])
+
+  @@map("licitacoes")
+}
+
+model User{
+  id String @id @default(uuid())
+  email String @unique
+  passwordHash String
+  role String
+  createdAt DateTime @default(now())
+}
+
+
+
+// anon key respeita RLS 
+// service_role key ignora RLS
+

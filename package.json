@@ -1,0 +1,36 @@
+{
+  "name": "monitora-me-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch --env-file=.env src/server.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iriscoxta/monitora-me-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iriscoxta/monitora-me-backend/issues"
+  },
+  "homepage": "https://github.com/iriscoxta/monitora-me-backend#readme",
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@prisma/client": "6",
+    "bcrypt": "^6.0.0",
+    "fastify": "^5.12.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "^26.4.0",
+    "prisma": "6",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}
