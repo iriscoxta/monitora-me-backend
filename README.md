@@ -226,11 +226,11 @@ Teste tudo pelo Swagger em **<http://localhost:3333/docs>**.
 | --- | --- | --- |
 | `Supplier` | `Supplier` | Fornecedor. `cnpj` é único |
 | `Bidding` | `Bidding` | Licitação de um fornecedor (relação N:1 com `Supplier`) |
-| `Orgao` | `orgaos` | Órgão público, vindo do schema da turma de Dados |
-| `Licitacao` | `licitacoes` | Licitação (PNCP) de um órgão, vinda da turma de Dados |
+| `Orgao` | `orgaos` | Órgão público. Model ilustrativo, usado para mostrar `@map` e relações |
+| `Licitacao` | `licitacoes` | Licitação (PNCP) de um órgão. Model ilustrativo, sem rotas ainda |
 | `User` | `User` | Usuário do sistema (`email` único, `passwordHash`, `role`) |
 
-Os models `Orgao` e `Licitacao` usam `@map` e `@@map` para manter **camelCase no TypeScript** enquanto o banco usa **snake_case**:
+A turma de Dados usa um banco próprio e só expõe os dados ao Fullstack por uma rota FastAPI; este banco é exclusivo do Fullstack. Os models `Orgao` e `Licitacao` usam `@map` e `@@map` para manter **camelCase no TypeScript** enquanto o banco usa **snake_case**:
 
 ```prisma
 model Orgao {
@@ -262,7 +262,7 @@ datasource db {
 3. Confira o SQL gerado em `prisma/migrations/`.
 4. Faça commit do schema **e** da pasta de migration juntos.
 
-> ⚠️ Se o Prisma avisar que vai **apagar dados** ou **recriar tabelas**, pare e chame o professor. O banco é compartilhado com a turma de Dados e as tabelas delas não podem ser perdidas. Em caso de dúvida, use `bunx prisma db pull` para sincronizar o schema com o banco em vez de forçar uma migration.
+> ⚠️ Se o Prisma avisar que vai **apagar dados** ou **recriar tabelas**, pare e chame o professor. Em caso de dúvida, use `bunx prisma migrate status` e `bunx prisma db pull` para entender o estado do banco antes de forçar uma migration.
 
 ---
 
@@ -354,8 +354,8 @@ Um commit por assunto: não misture correção de bug com documentação no mesm
 | --- | --- | --- |
 | `@prisma/client did not initialize yet` | Prisma Client não foi gerado | `bunx prisma generate` |
 | `Cannot find module '../generated/prisma/client'` | Mesmo caso acima | `bunx prisma generate` |
-| `500` com `Error querying the database` | `DATABASE_URL` incorreta ou projeto do Supabase pausado | Copie a string de novo no painel e confira se o projeto está ativo |
-| `FATAL: (ENOTFOUND) tenant/user ... not found` | Host ou região do pooler não corresponde ao projeto | Recopie a connection string do painel do Supabase |
+| `500` com `Error querying the database` | `DATABASE_URL` incorreta ou projeto do Supabase pausado | Confira no painel se o projeto está ativo (veja a linha abaixo) |
+| `FATAL: (ENOTFOUND) tenant/user ... not found` | **Projeto pausado**: o plano Free pausa após cerca de 1 semana sem uso | No painel do Supabase, clique em **Resume project** e espere o status ficar *Healthy* (até 5 min) |
 | Erro de CORS no navegador | `FRONTEND_URL` diferente da origem do front | Ajuste no `.env` e reinicie o servidor |
 | `EADDRINUSE` | Porta `3333` já está em uso | Feche o outro processo ou mude o `PORT` no `.env` |
 | Variável nova não é lida | O `.env` só é carregado ao iniciar | Reinicie o `bun run dev` |
