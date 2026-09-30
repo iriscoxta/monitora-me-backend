@@ -1,7 +1,5 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { suppliersService } from "../services/suppliers-service";
-import { stringify } from "node:querystring";
-import { REPL_MODE_SLOPPY } from "node:repl";
 
 export async function suppliersRoutes(app: FastifyInstance){
     app.get("/suppliers",

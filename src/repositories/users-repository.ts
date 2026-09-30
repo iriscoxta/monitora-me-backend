@@ -1,6 +1,5 @@
 import bcrypt from "bcrypt"
 import {prisma} from "../lib/prisma"
-import { create } from "node:domain"
 
 export const UsersRepository = {
     create: async (data: { email: string; password: string; role: string}) => {
