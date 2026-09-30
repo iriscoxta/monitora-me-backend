@@ -1,3 +1,4 @@
+import { ConflictError } from "../errors/conflict-error"
 import { suppliersRepository } from "../repositories/suppliers-repository"
 
 export const suppliersService = {
@@ -63,10 +64,20 @@ export const suppliersService = {
   },
 
   deleteSupplier: async (id: string) => {
-    try {
-      await suppliersRepository.delete(id)
-    } catch {
+    const supplier = await suppliersRepository.findById(id)
+
+    if (!supplier) {
       throw new Error("Fornecedor não encontrado")
     }
+
+    const totalBiddings = await suppliersRepository.countBiddings(id)
+
+    if (totalBiddings > 0) {
+      throw new ConflictError(
+        `Fornecedor possui ${totalBiddings} licitação(ões) vinculada(s) e não pode ser removido`,
+      )
+    }
+
+    await suppliersRepository.delete(id)
   },
 }

@@ -197,7 +197,7 @@ Recurso implementado até agora: **fornecedores** (`suppliers`).
 | `GET` | `/suppliers/:id/biddings` | Fornecedor com suas licitações; aceita `?minValue=` | `200` | `404` |
 | `POST` | `/suppliers` | Cria um fornecedor | `201` | `400` |
 | `PATCH` | `/suppliers/:id` | Atualização **parcial** (envie só os campos que mudam) | `200` | `404` |
-| `DELETE` | `/suppliers/:id` | Remove um fornecedor | `204` (sem corpo) | `404` |
+| `DELETE` | `/suppliers/:id` | Remove um fornecedor que não tenha licitações | `204` (sem corpo) | `404`, `409` |
 
 Filtros de `GET /suppliers` (todos opcionais e combináveis):
 
@@ -225,6 +225,8 @@ Exemplo de corpo para `POST /suppliers`:
   "porte": "ME"
 }
 ```
+
+O `DELETE` responde `409 Conflict` quando o fornecedor ainda tem licitações vinculadas: apague ou reatribua as licitações antes.
 
 Formato dos erros:
 

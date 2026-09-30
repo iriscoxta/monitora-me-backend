@@ -35,6 +35,10 @@ export const suppliersRepository = {
     })
   },
 
+  countBiddings: async (supplierId: string) => {
+    return prisma.bidding.count({ where: { supplierId } })
+  },
+
   create: async (data: { name: string; cnpj: string; porte: string }) => {
     return prisma.supplier.create({ data })
   },

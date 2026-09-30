@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify"
+import { ConflictError } from "../errors/conflict-error"
 import { suppliersService } from "../services/suppliers-service"
 
 const supplierProperties = {
@@ -233,6 +234,7 @@ export async function suppliersRoutes(app: FastifyInstance) {
         response: {
           204: { type: "null", description: "Removido com sucesso" },
           404: errorSchema,
+          409: errorSchema,
         },
       },
     },
@@ -243,7 +245,8 @@ export async function suppliersRoutes(app: FastifyInstance) {
         await suppliersService.deleteSupplier(id)
         return reply.status(204).send()
       } catch (error) {
-        return reply.status(404).send({ message: (error as Error).message })
+        const status = error instanceof ConflictError ? 409 : 404
+        return reply.status(status).send({ message: (error as Error).message })
       }
     },
   )
