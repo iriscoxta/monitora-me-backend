@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify"
 import { ConflictError } from "../errors/conflict-error"
 import { suppliersService } from "../services/suppliers-service"
+import { errorSchema } from "./schemas"
+import { authMiddleware } from "../middlewares/auth-middleware"
 
 const supplierProperties = {
   id: { type: "string" },
@@ -13,13 +15,6 @@ const supplierProperties = {
 const supplierSchema = {
   type: "object",
   properties: supplierProperties,
-}
-
-const errorSchema = {
-  type: "object",
-  properties: {
-    message: { type: "string" },
-  },
 }
 
 const idParamsSchema = {
@@ -161,8 +156,10 @@ export async function suppliersRoutes(app: FastifyInstance) {
   app.post(
     "/suppliers",
     {
+      preHandler: [authMiddleware],
       schema: {
         tags: ["suppliers"],
+        security: [{ bearerAuth: [] }],
         body: {
           type: "object",
           properties: {
@@ -176,6 +173,7 @@ export async function suppliersRoutes(app: FastifyInstance) {
         response: {
           201: supplierSchema,
           400: errorSchema,
+          401: errorSchema,
         },
       },
     },
@@ -194,8 +192,10 @@ export async function suppliersRoutes(app: FastifyInstance) {
   app.patch(
     "/suppliers/:id",
     {
+      preHandler: [authMiddleware],
       schema: {
         tags: ["suppliers"],
+        security: [{ bearerAuth: [] }],
         params: idParamsSchema,
         body: {
           type: "object",
@@ -208,6 +208,7 @@ export async function suppliersRoutes(app: FastifyInstance) {
         },
         response: {
           200: supplierSchema,
+          401: errorSchema,
           404: errorSchema,
         },
       },
@@ -228,11 +229,14 @@ export async function suppliersRoutes(app: FastifyInstance) {
   app.delete(
     "/suppliers/:id",
     {
+      preHandler: [authMiddleware],
       schema: {
         tags: ["suppliers"],
+        security: [{ bearerAuth: [] }],
         params: idParamsSchema,
         response: {
           204: { type: "null", description: "Removido com sucesso" },
+          401: errorSchema,
           404: errorSchema,
           409: errorSchema,
         },

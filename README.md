@@ -36,6 +36,7 @@ Este repositório é também **material didático**: cada camada do código exis
 | [Prisma 6](https://www.prisma.io) | ORM, schema e migrations |
 | [PostgreSQL (Supabase)](https://supabase.com) | Banco de dados |
 | [bcrypt](https://github.com/kelektiv/node.bcrypt.js) | Hash de senhas |
+| [@fastify/jwt](https://github.com/fastify/fastify-jwt) | Geração e verificação de tokens JWT |
 | [tsx](https://tsx.is) | Executa TypeScript direto, com *watch* |
 | [Bun](https://bun.sh) | Gerenciador de pacotes do projeto |
 
@@ -93,8 +94,17 @@ Copie `.env.example` para `.env` e preencha:
 | `FRONTEND_URL` | Não (padrão `http://localhost:3000`) | Origem liberada no CORS. Use a URL exata do front, nunca `*` |
 | `DATABASE_URL` | **Sim** | Conexão do Prisma com o banco (pooler do Supabase, porta `6543`, com `?pgbouncer=true`) |
 | `DIRECT_URL` | **Sim** | Conexão direta, usada pelas migrations (porta `5432`) |
+| `JWT_SECRET` | **Sim** | Chave secreta usada para assinar os tokens JWT. Obrigatória |
 
 As duas strings de conexão ficam em **Supabase → Project Settings → Database → Connection string**.
+
+Para gerar o `JWT_SECRET`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+Sem essa variável o servidor não sobe. Trocar o valor invalida todos os tokens já emitidos.
 
 > 🚫 **Nunca** faça commit do `.env`. Ele já está no `.gitignore`. Quem mantém o modelo versionado é o `.env.example`, sem valores reais: sempre que criar uma variável nova no `.env`, registre o nome dela no `.env.example`.
 
@@ -105,6 +115,7 @@ As duas strings de conexão ficam em **Supabase → Project Settings → Databas
 | Comando | O que faz |
 | --- | --- |
 | `bun run dev` | Sobe o servidor com recarga automática (`tsx watch --env-file=.env src/server.ts`) |
+| `bun run create-user <email> <senha> <role>` | Cria um usuário de teste (`role`: `admin`, `analyst` ou `viewer`) |
 | `bunx prisma generate` | Gera o Prisma Client em `src/generated/prisma` |
 | `bunx prisma migrate dev --name <nome>` | Cria e aplica uma migration em desenvolvimento |
 | `bunx prisma migrate status` | Mostra se o banco está em dia com as migrations |
@@ -125,13 +136,19 @@ monitora-me-backend/
 │   ├── generated/prisma/      # Prisma Client gerado (NÃO versionado)
 │   ├── lib/
 │   │   └── prisma.ts          # Única instância do PrismaClient
+│   ├── middlewares/           # preHandlers (ex.: autenticação)
+│   │   └── auth-middleware.ts
 │   ├── repositories/          # Acesso ao banco
 │   │   ├── suppliers-repository.ts
 │   │   └── users-repository.ts
 │   ├── services/              # Regras de negócio
 │   │   └── suppliers-service.ts
 │   ├── routes/                # Rotas HTTP e schemas do Swagger
+│   │   ├── auth-routes.ts
+│   │   ├── schemas.ts         # Schemas compartilhados (errorSchema)
 │   │   └── suppliers-routes.ts
+│   ├── scripts/               # Scripts de linha de comando
+│   │   └── create-user.ts
 │   └── server.ts              # Ponto de entrada: plugins e registro das rotas
 ├── .env                       # Seus segredos (NÃO versionado)
 ├── .env.example               # Modelo das variáveis
@@ -187,17 +204,18 @@ A ordem importa. Mantenha:
 
 ## 🌐 Endpoints
 
-Recurso implementado até agora: **fornecedores** (`suppliers`).
+Recursos implementados até agora: **login** (`auth`) e **fornecedores** (`suppliers`). Rotas marcadas com 🔒 exigem o cabeçalho `Authorization: Bearer <token>`.
 
 | Método | Rota | Descrição | Sucesso | Erros |
 | --- | --- | --- | --- | --- |
+| `POST` | `/login` | Valida email e senha e devolve `{ "token": "..." }` (válido por 8h) | `200` | `400`, `401` |
 | `GET` | `/suppliers` | Lista fornecedores, com filtros opcionais (veja abaixo) | `200` | |
 | `GET` | `/suppliers/stats` | Quantidade de fornecedores agrupada por porte | `200` | |
 | `GET` | `/suppliers/:id` | Busca um fornecedor pelo id | `200` | `404` |
 | `GET` | `/suppliers/:id/biddings` | Fornecedor com suas licitações; aceita `?minValue=` | `200` | `404` |
-| `POST` | `/suppliers` | Cria um fornecedor | `201` | `400` |
-| `PATCH` | `/suppliers/:id` | Atualização **parcial** (envie só os campos que mudam) | `200` | `404` |
-| `DELETE` | `/suppliers/:id` | Remove um fornecedor que não tenha licitações | `204` (sem corpo) | `404`, `409` |
+| `POST` | `/suppliers` 🔒 | Cria um fornecedor | `201` | `400`, `401` |
+| `PATCH` | `/suppliers/:id` 🔒 | Atualização **parcial** (envie só os campos que mudam) | `200` | `401`, `404` |
+| `DELETE` | `/suppliers/:id` 🔒 | Remove um fornecedor que não tenha licitações | `204` (sem corpo) | `401`, `404`, `409` |
 
 Filtros de `GET /suppliers` (todos opcionais e combináveis):
 
@@ -236,7 +254,7 @@ Formato dos erros:
 }
 ```
 
-Teste tudo pelo Swagger em **<http://localhost:3333/docs>**.
+Teste tudo pelo Swagger em **<http://localhost:3333/docs>**. Para as rotas 🔒, faça `POST /login`, clique em **Authorize** e cole só o token (sem `Bearer`).
 
 ---
 
@@ -290,19 +308,21 @@ datasource db {
 
 ## 🔒 Autenticação: até onde chegamos
 
-O projeto está na **Aula 14**. Já existe:
+O projeto está na **Aula 15**. Já existe:
 
 - Model `User` com `passwordHash` (a senha em texto puro **nunca** é gravada).
 - `src/repositories/users-repository.ts` com:
   - `create({ email, password, role })`: gera o hash com `bcrypt.hash(senha, 10)` e grava.
   - `findByEmail(email)`: busca o usuário pelo e-mail.
+- `POST /login` (`src/routes/auth-routes.ts`): confere a senha com `bcrypt.compare` e devolve um JWT com `{ sub, role }`, válido por 8h. Email inexistente e senha errada respondem a mesma mensagem genérica (`401`).
+- `src/middlewares/auth-middleware.ts`: `preHandler` que chama `request.jwtVerify()` e responde `401` sem token válido. Aplicado em `POST`, `PATCH` e `DELETE /suppliers`.
+- `src/scripts/create-user.ts`: cria usuários de teste com `role` `admin`, `analyst` ou `viewer`.
 
 **Ainda não existe** (e não deve ser adicionado antes da aula correspondente):
 
 | Recurso | Aula |
 | --- | --- |
-| Rota de login e JWT (`@fastify/jwt`) | 15 |
-| Proteção de rotas com `preHandler` e controle de perfis (`requireRole`, RBAC) | 16 |
+| Controle de perfis (`requireRole`, RBAC) e tipagem de `request.user` | 16 |
 
 > 🛡️ **Segurança:** nunca use `console.log` com senha, hash ou token, nem deixe arquivos de teste soltos em `src/`.
 
@@ -394,7 +414,7 @@ Um commit por assunto: não misture correção de bug com documentação no mesm
 - [x] CRUD completo de fornecedores
 - [x] Documentação com Swagger
 - [x] Hash de senhas com bcrypt (Aula 14)
-- [ ] Login e JWT (Aula 15)
+- [x] Login e JWT (Aula 15)
 - [ ] Controle de acesso por perfil, RBAC (Aula 16)
 - [x] Filtros, agregações e `include` nas consultas do repository
 - [ ] Rotas para `Orgao`, `Licitacao` e `User`
